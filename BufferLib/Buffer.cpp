@@ -11,44 +11,43 @@ Buffer::Buffer(std::shared_ptr<IMemoryBlock> pMemoryBlock)
 	_fragments.push_back(frag);
 }
 
-Buffer::Buffer(const Buffer & srcBuffer, size_t offset)
-	: Buffer(srcBuffer, offset, srcBuffer.getLength() - offset)
+Buffer::Buffer(const Buffer & srcBuffer, const const_itr & copyFrom)
+	: Buffer(srcBuffer, copyFrom, srcBuffer.cend())
 {
 }
 
-Buffer::Buffer(const Buffer & xSrcBuffer, size_t xOffset, size_t xLength)
+
+Buffer::Buffer(const Buffer & srcBuffer, const const_itr & copyFrom, const const_itr & copyTo)
 {
-	size_t offsetOfFragment = 0;
-	auto offsetToCopyFrom = xOffset;
-	auto lengthToDo = xLength;
-	auto sourceLength = xSrcBuffer.getLength();
-	if (offsetToCopyFrom >= sourceLength)
-	{
-		return;
-	}
-	if ((offsetToCopyFrom + xLength) > sourceLength)
-	{
-		lengthToDo = sourceLength - offsetToCopyFrom;
-	}
+	const_itr fragmentEnd{ srcBuffer.cbegin() };
 
-	for (BufferFragment srcFrag : xSrcBuffer._fragments)
+	for (BufferFragment srcFragment : srcBuffer._fragments)
 	{
-		auto endOfFragment = offsetOfFragment + srcFrag.getLength();
-		if (endOfFragment > offsetToCopyFrom) // We should copy this fragment
+		const_itr fragmentStart{ fragmentEnd };
+		fragmentEnd += srcFragment.getLength();
+		if (copyFrom >= fragmentEnd)
 		{
-			BufferFragment newFrag(srcFrag, offsetToCopyFrom - offsetOfFragment, lengthToDo);
-			lengthToDo -= newFrag.getLength();
-			_fragments.push_back(newFrag);
-			offsetToCopyFrom += newFrag.getLength();
+			// Not yet at start of required fragment
+			continue;
 		}
-		// else we still haven't found the start
-
-		if (lengthToDo == 0)
+		if ((copyTo >= fragmentEnd) && (copyFrom <= fragmentStart))
 		{
+			// Copy all of this fragment
+			_fragments.push_back(srcFragment);
+		}
+		else if (copyTo < fragmentStart)
+		{
+			// Copied all we want
 			break;
 		}
-
-		offsetOfFragment += srcFrag.getLength();
+		else
+		{
+			// Copy a partial fragment
+			size_t offset = (copyFrom <= fragmentStart) ? 0 : copyFrom - fragmentStart;
+			size_t length = (copyTo >= fragmentEnd) ? srcFragment.getLength() - offset : (copyTo - fragmentStart) - offset;
+			BufferFragment newFrag(srcFragment, offset, length);
+			_fragments.push_back(newFrag);
+		}
 	}
 }
 
@@ -349,9 +348,33 @@ bool operator<(const Buffer::const_itr& lhs, const Buffer::const_itr& rhs)
 	}
 }
 
+bool operator<=(const Buffer::const_itr& lhs, const Buffer::const_itr& rhs)
+{
+	return ((lhs < rhs) || (lhs == rhs));
+}
+
+bool operator>(const Buffer::const_itr& lhs, const Buffer::const_itr& rhs)
+{
+	return !(lhs <= rhs);
+}
+
+bool operator>=(const Buffer::const_itr& lhs, const Buffer::const_itr& rhs)
+{
+	return !(lhs < rhs);
+}
+
+
+
 Buffer::const_itr & Buffer::const_itr::operator-=(difference_type decrease)
 {
 	return (*this) += -decrease;
+}
+
+Buffer::const_itr operator+(const Buffer::const_itr& lhs, Buffer::const_itr::difference_type rhs)
+{
+	Buffer::const_itr result{ lhs };
+	result += rhs;
+	return result;
 }
 
 

@@ -39,9 +39,9 @@ class IMemoryBlock;
 			const_itr& operator+=(difference_type increase);
 			const_itr& operator-=(difference_type decrease);
 			friend bool operator<(const const_itr& lhs, const const_itr& rhs);
-			friend bool operator>(const_itr& lhs, const_itr& rhs);
-			friend bool operator<=(const_itr& lhs, const_itr& rhs);
-			friend bool operator>=(const_itr& lhs, const_itr& rhs);
+			friend bool operator>(const const_itr& lhs, const const_itr& rhs);
+			friend bool operator<=(const const_itr& lhs, const const_itr& rhs);
+			friend bool operator>=(const const_itr& lhs, const const_itr& rhs);
 		private:
 			const Buffer* _buffer;
 			std::vector<BufferFragment>::const_iterator _fragmentIterator;
@@ -50,9 +50,9 @@ class IMemoryBlock;
 
 
 		// Construct sub-buffer (cut off start)
-		Buffer(const Buffer& srcBuffer, size_t offset);
+		Buffer(const Buffer& srcBuffer, const const_itr& copyFrom);
 		// Construct sub-buffer (cut start and end)
-		Buffer(const Buffer& srcBuffer, size_t offset, size_t length);
+		Buffer(const Buffer& srcBuffer, const const_itr& copyFrom, const const_itr& copyTo);
 
 		// Buffer concatenation
 		Buffer& operator+=(const Buffer& srcBuffer);

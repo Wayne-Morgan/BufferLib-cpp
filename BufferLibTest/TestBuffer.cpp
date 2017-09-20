@@ -13,9 +13,9 @@ std::ostringstream gDebug;
 // Todo: Make thread-safe
 // Todo: Replace offsets and Lengths with iterators
 // Todo: Add some usable concrete MemoryBlock classes
-// Todo: Maybe replace pointer in iterator with weak_ptr
 // Todo: Maybe add GTest/GMock
 // Todo: Clean-up.  Too many functions, and too much repetition.  Write functions in terms of others
+// Todo: Improve cend()
 
 class TestMemoryBlock : public IMemoryBlock
 {
@@ -110,7 +110,7 @@ const char testContents[] = "0123456789";
 		{
 			std::shared_ptr<IMemoryBlock> pBlock{ std::make_shared<TestMemoryBlock>(testContents) };
 			Buffer buffer(pBlock);
-			Buffer buffer2(buffer, 2, 5);
+			Buffer buffer2(buffer, buffer.cbegin() + 2, buffer.cbegin() + 7);
 			Assert::AreEqual((int)buffer2.getLength(), 5);
 			Assert::AreEqual(buffer2[2], '4');
 		}
@@ -119,7 +119,7 @@ const char testContents[] = "0123456789";
 		{
 			std::shared_ptr<IMemoryBlock> pBlock{ std::make_shared<TestMemoryBlock>(testContents) };
 			Buffer buffer(pBlock);
-			Buffer buffer2(buffer, 2, 5);
+			Buffer buffer2(buffer, buffer.cbegin() + 2, buffer.cbegin() + 7);
 			Buffer buffer3 = buffer + buffer2;
 			Assert::AreEqual((int)buffer3.getLength(), 15);
 			Assert::AreEqual(buffer3[14], '6');
@@ -129,7 +129,7 @@ const char testContents[] = "0123456789";
 		{
 			std::shared_ptr<IMemoryBlock> pBlock{ std::make_shared<TestMemoryBlock>(testContents) };
 			Buffer buffer(pBlock);
-			Buffer buffer2(buffer, 2, 5);
+			Buffer buffer2(buffer, buffer.cbegin() + 2, buffer.cbegin() + 7);
 			buffer += buffer2;
 			Assert::AreEqual((int)buffer.getLength(), 15);
 			Assert::AreEqual(buffer[14], '6');
@@ -142,7 +142,7 @@ const char testContents[] = "0123456789";
 			memset(actual, 0, 16);
 			std::shared_ptr<IMemoryBlock> pBlock{ std::make_shared<TestMemoryBlock>(testContents) };
 			Buffer buffer(pBlock);
-			Buffer buffer2(buffer, 2, 5);
+			Buffer buffer2(buffer, buffer.cbegin() + 2, buffer.cbegin() + 7);
 			buffer += buffer2;
 
 			buffer.copy(0, buffer.getLength(), actual);
@@ -157,10 +157,10 @@ const char testContents[] = "0123456789";
 			memset(actual, 0, 16);
 			std::shared_ptr<IMemoryBlock> pBlock{ std::make_shared<TestMemoryBlock>(testContents) };
 			Buffer buffer(pBlock);
-			Buffer buffer2(buffer, 2, 5);
+			Buffer buffer2(buffer, buffer.cbegin() + 2, buffer.cbegin() + 7);
 			buffer += buffer2;
 
-			Buffer buffer3(buffer, 6, 7);
+			Buffer buffer3(buffer, buffer.cbegin() + 6, buffer.cbegin() + 13);
 
 			Assert::AreEqual((int)buffer3.getLength(), 7);
 			buffer3.copy(0, buffer3.getLength(), actual);
@@ -174,9 +174,9 @@ const char testContents[] = "0123456789";
 			memset(actual, 0, sizeof(actual));
 			std::shared_ptr<IMemoryBlock> pBlock{ std::make_shared<TestMemoryBlock>(testContents) };
 			Buffer buffer(pBlock);
-			Buffer buffer2(buffer, 2, 5);
+			Buffer buffer2(buffer, buffer.cbegin() + 2, buffer.cbegin() + 7);
 			buffer += buffer2;
-			const Buffer buffer3(buffer, 6, 7);
+			const Buffer buffer3(buffer, buffer.cbegin() + 6, buffer.cbegin() + 13);
 			char* pDest = actual;
 
 			// Would like to use range based for but need non-const iterators
@@ -225,19 +225,18 @@ const char testContents[] = "0123456789";
 			auto firstVowel = std::find_first_of(buffer.cbegin(), buffer.cend(), vowels.cbegin(), vowels.cend());
 			while (firstVowel != buffer.cend())
 			{
-				size_t offset{ static_cast<size_t>(firstVowel - buffer.cbegin()) };
-				if (offset == 0)
+				if (firstVowel == buffer.cbegin())
 				{
-					buffer = Buffer{ buffer, 1 };
+					buffer = Buffer{ buffer, firstVowel + 1 };
 				}
-				else if (offset + 1 == buffer.getLength())
+				else if (firstVowel + 1 == buffer.cend())
 				{
-					buffer = Buffer{ buffer, 0, buffer.getLength() - 1 };
+					buffer = Buffer{ buffer, buffer.cbegin(), firstVowel };
 				}
 				else
 				{
-					Buffer before{ buffer, 0, offset };
-					Buffer after{ buffer, offset + 1 };
+					Buffer before{ buffer, buffer.cbegin(), firstVowel };
+					Buffer after{ buffer, firstVowel + 1 };
 					buffer = before + after;
 				}
 
@@ -261,19 +260,18 @@ const char testContents[] = "0123456789";
 			auto firstVowel = std::find_first_of(buffer.cbegin(), buffer.cend(), vowels.cbegin(), vowels.cend());
 			while (firstVowel != buffer.cend())
 			{
-				size_t offset{ static_cast<size_t>(firstVowel - buffer.cbegin()) };
-				if (offset == 0)
+				if (firstVowel == buffer.cbegin())
 				{
-					buffer = insertion + Buffer{ buffer, 1 };
+					buffer = insertion + Buffer{ buffer, firstVowel + 1 };
 				}
-				else if (offset + 1 == buffer.getLength())
+				else if (firstVowel + 1 == buffer.cend())
 				{
-					buffer = Buffer{ buffer, 0, buffer.getLength() - 1 } + insertion;
+					buffer = Buffer{ buffer, buffer.cbegin(), firstVowel } + insertion;
 				}
 				else
 				{
-					Buffer before{ buffer, 0, offset };
-					Buffer after{ buffer, offset + 1 };
+					Buffer before{ buffer, buffer.cbegin(), firstVowel };
+					Buffer after{ buffer, firstVowel + 1 };
 					buffer = before + insertion + after;
 				}
 
